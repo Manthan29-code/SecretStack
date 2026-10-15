@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecretStack</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./renderer.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-row">
+        <div class="brand-mark" aria-hidden="true">ϟ</div>
+        <div><div class="brand-name">SecretStack</div><div class="brand-caption">LOCAL SECRET VAULT</div></div>
+      </div>
+      <div class="sidebar-section-label">WORKSPACE</div>
+      <button class="nav-item active" id="navVault"><span class="nav-icon">▦</span> Vault <span class="nav-count" id="totalCount">0</span></button>
+      <button class="nav-item" id="navSettings"><span class="nav-icon">⚙</span> Settings</button>
+      <div class="sidebar-heading"><span>GROUPS</span><button class="icon-button" id="addGroupButton" aria-label="Add group" title="Add group">+</button></div>
+      <div id="groupList" class="group-list"></div>
+      <div class="sidebar-bottom">
+        <div class="secure-indicator"><span class="status-dot"></span><span>Local encryption</span><span class="status-check">✓</span></div>
+        <div class="sidebar-footnote">Your secrets stay on this device.</div>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div class="breadcrumbs"><span>Workspace</span><span class="crumb-slash">/</span><strong id="breadcrumbCurrent">All secrets</strong></div>
+        <div class="topbar-actions"><span class="offline-pill"><span></span> Offline-first</span><button class="button button-outline button-small" id="lockButton">Lock vault</button><button class="button button-outline button-small" id="settingsButton">Settings <span>↗</span></button></div>
+      </header>
+
+      <section id="vaultView" class="workspace">
+        <div class="page-heading">
+          <div><div class="eyebrow">YOUR CREDENTIALS</div><h1>Secret vault<span class="title-period">.</span></h1><p class="page-subtitle">Keep your development keys organized and protected.</p></div>
+          <button class="button button-primary" id="addSecretButton"><span class="plus">+</span> Add secret</button>
+        </div>
+        <div class="toolbar">
+          <label class="search-box"><span class="search-icon">⌕</span><input id="searchInput" type="search" placeholder="Search secrets, providers, tags..." autocomplete="off" aria-label="Search secrets"><kbd>⌘ K</kbd></label>
+          <div class="toolbar-meta"><span class="live-dot"></span><span id="resultCount">0 secrets</span></div>
+        </div>
+        <div class="vault-grid">
+          <section class="secret-list-panel">
+            <div class="panel-topline"><span class="panel-title">Secrets <span class="subtle-count" id="panelCount">0</span></span><span class="panel-caption">SORTED BY RECENT</span></div>
+            <div id="secretList" class="secret-list"></div>
+          </section>
+          <section id="detailPanel" class="detail-panel"><div class="detail-empty"><div class="empty-lock">ϟ</div><h2>Select a secret</h2><p>Choose an item from your vault to see its safe metadata and available actions.</p><div class="empty-note"><span>◈</span> Secret values are never displayed here.</div></div></section>
+        </div>
+        <footer class="workspace-footer"><span><span class="footer-lock">▣</span> Encrypted at rest with OS-backed protection</span><span>SECRETSTACK <span class="footer-separator">/</span> PART 1</span></footer>
+      </section>
+
+      <section id="settingsView" class="workspace hidden">
+        <div class="page-heading"><div><div class="eyebrow">PREFERENCES</div><h1>Settings<span class="title-period">.</span></h1><p class="page-subtitle">Local storage and security information.</p></div></div>
+        <div class="settings-grid">
+          <article class="settings-card"><div class="settings-card-icon">◈</div><div><h2>Vault protection</h2><p>Lock the vault immediately or choose how long SecretStack can remain inactive before it locks automatically.</p><div class="settings-controls"><label for="autoLockMinutes">Auto-lock after inactivity</label><select id="autoLockMinutes"><option value="1">1 minute</option><option value="2">2 minutes</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option></select><button class="button button-outline button-small" id="lockNowSettings">Lock vault now</button></div></div></article>
+          <article class="settings-card"><div class="settings-card-icon">▣</div><div><h2>Clipboard safety</h2><p>Best-effort clearing only happens if the clipboard still contains the exact value SecretStack copied. Other clipboard software may retain copies.</p><div class="settings-controls"><label for="clipboardTimeout">Clear clipboard after</label><select id="clipboardTimeout"><option value="0">Never (not recommended)</option><option value="15">15 seconds</option><option value="30">30 seconds</option><option value="60">60 seconds</option></select><button class="button button-outline button-small" id="saveSecuritySettings">Save security settings</button></div></div></article>
+          <article class="settings-card"><div class="settings-card-icon">⇧</div><div><h2>Encrypted backup</h2><p>Create a portable, password-protected backup or restore a compatible backup. Keep the backup password separate; it cannot be recovered for you.</p><div class="settings-controls"><button class="button button-primary button-small" id="exportBackupButton">Export encrypted backup</button><button class="button button-outline button-small" id="importBackupButton">Restore backup…</button></div></div></article>
+          <article class="settings-card"><div class="settings-card-icon">▣</div><div><h2>Encrypted local vault</h2><p>Secret values are encrypted by Electron's operating-system-backed safeStorage before they are written to disk. The renderer never receives saved values.</p><span class="settings-status"><span class="status-dot"></span> <span id="encryptionStatus">Checking encryption…</span></span></div></article>
+          <article class="settings-card"><div class="settings-card-icon">⌂</div><div><h2>Vault location</h2><p>The vault is stored in this app's local user-data directory. The file contains encrypted values and non-secret metadata.</p><button class="button button-outline button-small" id="openDataFolder">Open storage folder ↗</button></div></article>
+          <article class="settings-card"><div class="settings-card-icon">ⓘ</div><div><h2>Security notes</h2><p>Copying puts a secret on the system clipboard. Clipboard managers, malware, or a compromised user account may still expose it. OS-backed encryption depends on your operating system's configuration.</p></div></article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <section id="lockScreen" class="lock-screen hidden" aria-labelledby="lockTitle">
+    <div class="lock-card">
+      <div class="brand-mark lock-brand" aria-hidden="true">ϟ</div>
+      <div class="eyebrow" id="lockEyebrow">LOCAL SECRET VAULT</div>
+      <h1 id="lockTitle">Unlock SecretStack<span class="title-period">.</span></h1>
+      <p id="lockDescription">Enter your master password to access your encrypted vault.</p>
+      <form id="lockForm">
+        <div id="lockSetupFields" class="lock-fields hidden">
+          <label for="masterPassword">Master password</label><input id="masterPassword" type="password" autocomplete="new-password" required placeholder="Create a master password">
+          <label for="confirmMasterPassword">Confirm master password</label><input id="confirmMasterPassword" type="password" autocomplete="new-password" required placeholder="Enter it again">
+          <p class="lock-warning">There is no password reset or hidden recovery. If you lose this password, you may lose access to this vault. Make an encrypted backup and keep its password safe.</p>
+        </div>
+        <div id="lockUnlockFields" class="lock-fields">
+          <label for="unlockPassword">Master password</label><input id="unlockPassword" type="password" autocomplete="current-password" required placeholder="Enter your master password">
+        </div>
+        <div id="lockError" class="form-error hidden" role="alert"></div>
+        <button class="button button-primary lock-submit" type="submit" id="lockSubmit">Unlock vault</button>
+      </form>
+    </div>
+  </section>
+  <div id="modalBackdrop" class="modal-backdrop hidden">
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header"><div><div class="eyebrow" id="modalEyebrow">VAULT ACTION</div><h2 id="modalTitle">Add secret</h2></div><button class="icon-button close-modal" id="closeModal" aria-label="Close dialog">×</button></div>
+      <form id="modalForm"><div id="modalBody" class="modal-body"></div><div id="modalError" class="form-error hidden" role="alert"></div><div class="modal-actions"><button type="button" class="button button-outline" id="cancelModal">Cancel</button><button type="submit" class="button button-primary" id="submitModal">Save</button></div></form>
+    </section>
+  </div>
+  <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "secretstack",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first encrypted API key and secret manager",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "reset-vault": "node resetVault.js",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0"
+  }
+}

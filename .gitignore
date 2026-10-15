@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+release/
+*.asar
+
+# Logs and debug output
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+secretstack-debug.log
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# SecretStack local vault and user data
+vault.json
+vault.json.*
+settings.json
+*.ssbak
+*.before-password-reset.bak
+*.reset-backup-*.bak
+
+# Temporary and atomic-write files
+*.tmp
+*.temp
+
+# Test and coverage output
+coverage/
+.nyc_output/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Package manager / runtime artifacts
+npm-cache/
