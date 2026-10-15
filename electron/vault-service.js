@@ -32,6 +32,7 @@ class VaultService {
       const saved = JSON.parse(fs.readFileSync(this.settingsPath, 'utf8'))
       if ([1, 2, 5, 10, 15, 30].includes(saved.autoLockMinutes)) this.settings.autoLockMinutes = saved.autoLockMinutes
       if ([0, 15, 30, 60].includes(saved.clearClipboardSeconds)) this.settings.clearClipboardSeconds = saved.clearClipboardSeconds
+      else if ([300, 900, 1800].includes(saved.clearClipboardSeconds)) this.settings.clearClipboardSeconds = 15
     } catch {}
     if (!fs.existsSync(this.filePath)) {
       this.initialData = this.createDefaultData()
@@ -363,7 +364,9 @@ class VaultService {
   }
 
   safeMetadata(secret) {
-    return { ...secret.metadata }
+    // The renderer needs the opaque record ID to select a secret and invoke
+    // copy/update/delete IPC handlers. Never include encryptedValue or plaintext.
+    return { id: secret.id, ...secret.metadata }
   }
 
   listSecrets({ groupId, query } = {}) {

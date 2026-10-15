@@ -1,13 +1,14 @@
 const { app, BrowserWindow, ipcMain, safeStorage, clipboard, dialog, shell } = require('electron')
 const path = require('node:path')
+const fs = require('node:fs')
 const { VaultService, VaultError } = require('./vault-service')
+const { createClipboardSafety } = require('./clipboard-safety')
 
 let mainWindow
 let vault
 let autoLockTimer = null
 let lastActivity = Date.now()
-let clipboardTimer = null
-let copiedClipboardValue = null
+const clipboardSafety = createClipboardSafety({ clipboard })
 
 function safeError(error) {
   if (error instanceof VaultError) return { code: error.code, message: error.message }
@@ -23,46 +24,25 @@ function resetAutoLock() {
 function lockVault(reason = 'manual') {
   if (autoLockTimer) clearTimeout(autoLockTimer)
   autoLockTimer = null
-  if (clipboardTimer) clearTimeout(clipboardTimer)
-  clipboardTimer = null
-  if (copiedClipboardValue !== null) {
-    try { if (clipboard.readText() === copiedClipboardValue) clipboard.clear() } catch {}
-    copiedClipboardValue = null
-  }
+  clipboardSafety.clearNow(reason)
   if (vault) vault.lock()
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('vault:locked', { reason })
 }
 
 function registerIpc() {
-  const logPath = path.join(app.getPath('userData'), 'secretstack-debug.log')
-  const debugLog = (event, details = {}) => {
-    try {
-      const safeDetails = { ...details }
-      delete safeDetails.value
-      delete safeDetails.password
-      delete safeDetails.secretValue
-      require('node:fs').appendFileSync(logPath, JSON.stringify({ time: new Date().toISOString(), event, ...safeDetails }) + '\n', { encoding: 'utf8', mode: 0o600 })
-    } catch {}
+  // Remove diagnostic log files left by earlier development builds.
+  for (const filename of ['secretstack-debug.log', 'clipboard-auto-clear.log']) {
+    try { fs.unlinkSync(path.join(app.getPath('userData'), filename)) } catch {}
   }
-  console.log('[SecretStack debug] Log file:', logPath)
-  debugLog('logging-started', { userDataPath: app.getPath('userData') })
   const handle = (channel, callback, options = {}) => {
     ipcMain.handle(channel, async (event, payload) => {
-      if (['secrets:list', 'secrets:create', 'secrets:update', 'secrets:delete', 'secrets:copy'].includes(channel)) {
-        debugLog('ipc-request', { channel, id: payload?.id, name: payload?.name, groupId: payload?.groupId, filePath: vault?.filePath })
-      }
       if (event.sender !== mainWindow?.webContents) {
         throw new Error('Untrusted IPC sender')
       }
       try {
         if (!options.public) { vault.requireUnlocked(); resetAutoLock() }
-        const result = await callback(payload || {})
-        if (['secrets:list', 'secrets:create', 'secrets:update', 'secrets:delete', 'secrets:copy'].includes(channel)) {
-          debugLog('ipc-success', { channel, id: payload?.id, filePath: vault?.filePath })
-        }
-        return result
+        return await callback(payload || {})
       } catch (error) {
-        debugLog('ipc-failure', { channel, code: error?.code, message: error?.message, stack: error?.stack, filePath: vault?.filePath })
         const safe = safeError(error)
         const ipcError = new Error(safe.message)
         ipcError.code = safe.code
@@ -87,31 +67,14 @@ function registerIpc() {
   handle('secrets:list', ({ groupId, query }) => vault.listSecrets({ groupId, query }))
   handle('secrets:create', ({ name, groupId, provider, description, tags, value, metadata }) =>
     vault.createSecret({ name, groupId, provider, description, tags, value, metadata }))
-  handle('secrets:update', ({ id, name, groupId, provider, description, tags, value, replaceValue, metadata }) => {
-    debugLog('update-start', { id, name, groupId, replaceValue, filePath: vault.filePath })
-    return vault.updateSecret({ id, name, groupId, provider, description, tags, value, replaceValue, metadata })
-  })
+  handle('secrets:update', ({ id, name, groupId, provider, description, tags, value, replaceValue, metadata }) =>
+    vault.updateSecret({ id, name, groupId, provider, description, tags, value, replaceValue, metadata }))
   handle('secrets:move', ({ id, groupId }) => vault.moveSecret({ id, groupId }))
-  handle('secrets:delete', ({ id }) => {
-    debugLog('delete-start', { id, filePath: vault.filePath })
-    const result = vault.deleteSecret(id)
-    debugLog('delete-finished', { id, result, filePath: vault.filePath })
-    return result
-  })
+  handle('secrets:delete', ({ id }) => vault.deleteSecret(id))
   handle('secrets:copy', ({ id }) => {
-    debugLog('copy-start', { id, filePath: vault.filePath })
     const value = vault.getSecretValueForCopy(id)
-    clipboard.writeText(value)
-    copiedClipboardValue = value
-    if (clipboardTimer) clearTimeout(clipboardTimer)
     const seconds = vault.getSettings().clearClipboardSeconds
-    if (seconds > 0) clipboardTimer = setTimeout(() => {
-      try { if (clipboard.readText() === value) clipboard.clear() } catch {}
-      if (copiedClipboardValue === value) copiedClipboardValue = null
-      clipboardTimer = null
-    }, seconds * 1000)
-    else copiedClipboardValue = null
-    return { copied: true, clipboardClearSeconds: seconds }
+    return clipboardSafety.copy(value, seconds)
   })
 
   handle('backup:export', async ({ password }) => {
@@ -188,7 +151,7 @@ app.whenReady().then(() => {
 app.on('before-quit', () => {
   if (vault) vault.lock()
   if (autoLockTimer) clearTimeout(autoLockTimer)
-  if (clipboardTimer) clearTimeout(clipboardTimer)
+  clipboardSafety.clearNow('app-quit')
 })
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

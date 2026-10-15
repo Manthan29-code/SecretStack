@@ -1,5 +1,6 @@
 const api = window.secretStack
 const $ = selector => document.querySelector(selector)
+
 const state = { groups: [], secrets: [], selectedGroupId: null, selectedSecretId: null, query: '', view: 'vault', modalSubmit: null }
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char])
@@ -114,7 +115,6 @@ function renderSecrets() {
     </div>`).join('')
   $('#secretList').querySelectorAll('[data-secret-id]').forEach(row => {
     const select = () => {
-      console.log('[SecretStack UI] secret row clicked', { id: row.dataset.secretId })
       state.selectedSecretId = row.dataset.secretId
       $('#secretList').querySelectorAll('[data-secret-id]').forEach(item => {
         item.classList.toggle('selected', item.dataset.secretId === state.selectedSecretId)
@@ -136,7 +136,6 @@ function renderSecrets() {
 
 function renderDetail() {
   const secret = selectedSecret()
-  console.log('[SecretStack UI] renderDetail', { selectedSecretId: state.selectedSecretId, found: Boolean(secret), name: secret?.name })
   const panel = $('#detailPanel')
   if (!secret) {
     panel.innerHTML = '<div class="detail-empty"><div class="empty-lock">ϟ</div><h2>Select a secret</h2><p>Choose an item from your vault to see its safe metadata and available actions.</p><div class="empty-note"><span>◈</span> Secret values are never displayed here.</div></div>'
@@ -163,12 +162,11 @@ function renderDetail() {
       <div class="detail-divider"></div><div class="detail-updated">CREATED ${escapeHtml(dateLabel(secret.createdAt))} <span style="padding:0 5px">·</span> ID ${escapeHtml(secret.id.slice(0, 8))}</div>
     </div>`
   $('#copySecret').addEventListener('click', async () => {
-    console.log('[SecretStack UI] Copy clicked', { id: secret.id })
-    try { const result = await api.copySecret({ id: secret.id }); console.log('[SecretStack UI] Copy IPC succeeded', result); showToast('Secret copied to clipboard.') }
-    catch (error) { console.error('[SecretStack UI] Copy failed', { code: error.code, message: error.message }); showToast(readableError(error), true) }
+    try { await api.copySecret({ id: secret.id }); showToast('Secret copied to clipboard.') }
+    catch (error) { showToast(readableError(error), true) }
   })
-  $('#editSecret').addEventListener('click', () => { console.log('[SecretStack UI] Edit clicked', { id: secret.id }); openSecretForm(secret) })
-  $('#deleteSecret').addEventListener('click', () => { console.log('[SecretStack UI] Delete clicked', { id: secret.id }); confirmDeleteSecret(secret) })
+  $('#editSecret').addEventListener('click', () => openSecretForm(secret))
+  $('#deleteSecret').addEventListener('click', () => confirmDeleteSecret(secret))
 }
 
 function render() {
@@ -212,7 +210,7 @@ function selectField(label, name, selectedId, options, full = false) {
 }
 
 function openModal({ title, eyebrow = 'VAULT ACTION', submit = 'Save', body, onSubmit }) {
-  console.log('[SecretStack UI] Opening modal', { title, eyebrow })
+
   state.modalSubmit = onSubmit
   $('#modalTitle').textContent = title
   $('#modalEyebrow').textContent = eyebrow
@@ -233,7 +231,7 @@ function closeModal() {
 
 $('#modalForm').addEventListener('submit', async event => {
   event.preventDefault()
-  console.log('[SecretStack UI] Modal submit started')
+
   const submit = state.modalSubmit
   if (!submit) return
   $('#submitModal').disabled = true
@@ -243,7 +241,6 @@ $('#modalForm').addEventListener('submit', async event => {
     closeModal()
     await refresh()
   } catch (error) {
-    console.error('[SecretStack UI] Modal operation failed', { code: error.code, message: error.message })
     $('#modalError').textContent = readableError(error)
     $('#modalError').classList.remove('hidden')
   } finally {
@@ -344,9 +341,9 @@ function confirmDeleteSecret(secret) {
     submit: 'Delete secret',
     body: '<p class="field full" style="grid-column:1/-1;color:var(--muted);font-size:12px;line-height:1.7;margin:0">This permanently removes <strong style="color:var(--ink)">' + escapeHtml(secret.name) + '</strong> from the local vault. This action cannot be undone.</p>',
     onSubmit: async () => {
-      console.log('[SecretStack UI] Confirmed delete; calling IPC', { id: secret.id })
+
       await api.deleteSecret({ id: secret.id })
-      console.log('[SecretStack UI] Delete IPC succeeded', { id: secret.id })
+
       state.selectedSecretId = null
       showToast('Secret deleted.')
     }

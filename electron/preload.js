@@ -24,5 +24,5 @@ contextBridge.exposeInMainWorld('secretStack', Object.freeze({
   moveSecret: data => invoke('secrets:move', data),
   deleteSecret: data => invoke('secrets:delete', data),
   copySecret: data => invoke('secrets:copy', data),
-  openDataFolder: () => invoke('app:openDataFolder')
+  openDataFolder: () => invoke('app:openDataFolder'),
 }))
