@@ -7,9 +7,39 @@
   "scripts": {
     "start": "electron .",
     "reset-vault": "node resetVault.js",
-    "test": "node --test"
+    "test": "node --test",
+    "dist": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:portable": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.secretstack.desktop",
+    "productName": "SecretStack",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "src/**/*",
+      "asset/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "asset/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "asset/icon.ico",
+      "uninstallerIcon": "asset/icon.ico"
+    }
   },
   "devDependencies": {
-    "electron": "^38.0.0"
+    "electron": "^38.0.0",
+    "electron-builder": "^25.1.8"
   }
 }

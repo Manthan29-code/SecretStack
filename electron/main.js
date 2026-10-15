@@ -118,6 +118,7 @@ function createWindow() {
     minHeight: 620,
     backgroundColor: '#101010',
     title: 'SecretStack',
+    icon: path.join(__dirname, '..', 'asset', 'icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
